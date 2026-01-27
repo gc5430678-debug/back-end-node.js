@@ -7,7 +7,7 @@ const sendPinEmail = async (to, pin) => {
   console.log("🔢 PIN:", pin);
 
   const result = await resend.emails.send({
-    from: "Auth App <onboarding@resend.dev>",
+    from: "Auth App <delvre.hassen-althahaby.workers.dev>",
     to,
     subject: "رمز التحقق",
     html: `
