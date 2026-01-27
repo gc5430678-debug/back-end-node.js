@@ -3,7 +3,10 @@ const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendPinEmail = async (to, pin) => {
-  await resend.emails.send({
+  console.log("📧 Sending to:", to);
+  console.log("🔢 PIN:", pin);
+
+  const result = await resend.emails.send({
     from: "Auth App <onboarding@resend.dev>",
     to,
     subject: "رمز التحقق",
@@ -15,6 +18,8 @@ const sendPinEmail = async (to, pin) => {
       </div>
     `,
   });
+
+  console.log("✅ Resend response:", result);
 };
 
 module.exports = sendPinEmail;
