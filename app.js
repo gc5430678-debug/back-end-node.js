@@ -68,7 +68,7 @@ connectDB();
 // ------------------------
 // 8️⃣ تشغيل السيرفر على Railway
 // ------------------------
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT ||  8080;
 
 async function bootstrap() {
   await app.listen(PORT, "0.0.0.0", () => {
