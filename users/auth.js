@@ -15,8 +15,6 @@ router.post("/register", async (req, res) => {
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const pinExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    await sendPinEmail(email, pin);
-
     let user = await User.findOne({ email });
 
     if (user) {
@@ -27,11 +25,17 @@ router.post("/register", async (req, res) => {
       user = new User({ name, email, pin, pinExpires });
     }
 
-    await user.save();
+    await user.save(); // ✅ حفظ أولًا
+
+    console.log("📧 Sending PIN to:", user.email);
+    console.log("🔢 PIN:", pin);
+
+    await sendPinEmail(user.email, pin); // ✅ إرسال بعد الحفظ
 
     res.json({ success: true, message: "تم إرسال رمز التحقق" });
+
   } catch (err) {
-    console.log(err);
+    console.log("❌ REGISTER ERROR:", err);
     res.json({ success: false, message: "فشل إرسال الإيميل" });
   }
 });
@@ -64,7 +68,6 @@ router.post("/logout", async (req, res) => {
     return res.json({ success: false, message: "البريد مطلوب" });
 
   try {
-    // 🔥 حذف المستخدم بالكامل (يمسح الإيميل + الهاتف + الموقع)
     await User.findOneAndDelete({ email });
 
     res.json({
