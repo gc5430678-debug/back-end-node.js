@@ -56,7 +56,7 @@ app.get("/", (req, res) => res.send("Server is running"));
 const connectDB = async () => {
   try {
     if (mongoose.connections[0].readyState) return; // لمنع الاتصال المزدوج
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URL);
     console.log("✅ MongoDB Connected");
   } catch (err) {
     console.error("❌ MongoDB Error:", err);
