@@ -56,7 +56,7 @@ app.get("/", (req, res) => res.send("Server is running"));
 const connectDB = async () => {
   try {
     if (mongoose.connections[0].readyState) return; // لمنع الاتصال المزدوج
-    await mongoose.connect("mongodb://mongo:SkpnKEMKZIfdYcxUcWBIzdpytXDKccHd@mongodb.railway.internal:27017");
+    await mongoose.connect(process.env.MONGO_URL);
     console.log("✅ MongoDB Connected");
   } catch (err) {
     console.error("❌ MongoDB Error:", err);
@@ -68,7 +68,7 @@ connectDB();
 // ------------------------
 // 8️⃣ تشغيل السيرفر على Railway
 // ------------------------
-const PORT = process.env.PORT ||  8080;
+const PORT = process.env.PORT || 8080;
 
 async function bootstrap() {
   await app.listen(PORT, "0.0.0.0", () => {
