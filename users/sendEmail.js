@@ -1,18 +1,10 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendPinEmail = async (to, pin) => {
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: {
-      user: process.env.EMAIL,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-
-  await transporter.sendMail({
-    from: `"Auth App" <${process.env.EMAIL}>`,
+  await resend.emails.send({
+    from: "Auth App <onboarding@resend.dev>",
     to,
     subject: "رمز التحقق",
     html: `
