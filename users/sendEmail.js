@@ -2,18 +2,17 @@ const nodemailer = require("nodemailer");
 
 const sendPinEmail = async (to, pin) => {
   const transporter = nodemailer.createTransport({
-    service: "gmail", // 🔥 مهم بدل host
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
     auth: {
-      user: process.env.EMAIL,
-      pass: process.env.EMAIL_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false, // 🔥 يحل مشكلة Railway
+      user: process.env.BREVO_EMAIL,
+      pass: process.env.BREVO_SMTP_KEY,
     },
   });
 
   await transporter.sendMail({
-    from: `"Auth App" <${process.env.EMAIL}>`,
+    from: `"Auth App" <${process.env.BREVO_EMAIL}>`,
     to,
     subject: "رمز التحقق",
     html: `
