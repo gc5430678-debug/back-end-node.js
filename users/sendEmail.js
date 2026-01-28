@@ -21,7 +21,7 @@ const sendPinEmail = async (to, pin) => {
       },
       {
         headers: {
-          "api-key": process.env.BREVO_API_KEY,
+          "api-key": process.env.BREVO_SMTP_KEY,
           "Content-Type": "application/json",
         },
       }
