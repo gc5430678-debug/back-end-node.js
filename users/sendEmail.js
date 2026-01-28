@@ -6,13 +6,13 @@ const sendPinEmail = async (to, pin) => {
     port: 587,
     secure: false,
     auth: {
-      user: process.env.BREVO_EMAIL,
+      user: process.env.BREVO_SMTP_USER,
       pass: process.env.BREVO_SMTP_KEY,
     },
   });
 
   await transporter.sendMail({
-    from: `"Auth App" <${process.env.BREVO_EMAIL}>`,
+    from: `"Auth App" <${process.env.BREVO_FROM_EMAIL}>`,
     to,
     subject: "رمز التحقق",
     html: `
