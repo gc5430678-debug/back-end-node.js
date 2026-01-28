@@ -1,35 +1,33 @@
-const nodemailer = require("nodemailer");
+const axios = require("axios");
 
 const sendPinEmail = async (to, pin) => {
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp-relay.brevo.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.BREVO_SMTP_USER,
-        pass: process.env.BREVO_SMTP_KEY,
+    await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: "Auth App",
+          email: process.env.BREVO_FROM_EMAIL,
+        },
+        to: [{ email: to }],
+        subject: "رمز التحقق",
+        htmlContent: `
+          <div style="text-align:center;font-family:Arial">
+            <h2>رمز التحقق الخاص بك</h2>
+            <h1>${pin}</h1>
+            <p>الرمز صالح لمدة 10 دقائق</p>
+          </div>
+        `,
       },
-    });
-
-    await transporter.verify(); // 🔥 مهم جدًا للتأكد من الاتصال
-
-    await transporter.sendMail({
-      from: `"Auth App" <${process.env.BREVO_FROM_EMAIL}>`,
-      to,
-      subject: "رمز التحقق",
-      html: `
-        <div style="text-align:center;font-family:Arial">
-          <h2>رمز التحقق الخاص بك</h2>
-          <h1>${pin}</h1>
-          <p>الرمز صالح لمدة 10 دقائق</p>
-        </div>
-      `,
-    });
-
-    console.log("✅ Email sent to:", to);
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
   } catch (err) {
-    console.error("❌ Email error:", err.message);
+    console.error("❌ Email API Error:", err.response?.data || err.message);
     throw err;
   }
 };
