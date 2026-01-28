@@ -1,13 +1,19 @@
-const { Resend } = require("resend");
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+const nodemailer = require("nodemailer");
 
 const sendPinEmail = async (to, pin) => {
-  console.log("📧 Sending to:", to);
-  console.log("🔢 PIN:", pin);
+  const transporter = nodemailer.createTransport({
+    service: "gmail", // 🔥 مهم بدل host
+    auth: {
+      user: process.env.EMAIL,
+      pass: process.env.EMAIL_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false, // 🔥 يحل مشكلة Railway
+    },
+  });
 
-  const result = await resend.emails.send({
-    from: "Auth App <delvre.hassen-althahaby.workers.dev>",
+  await transporter.sendMail({
+    from: `"Auth App" <${process.env.EMAIL}>`,
     to,
     subject: "رمز التحقق",
     html: `
@@ -18,8 +24,6 @@ const sendPinEmail = async (to, pin) => {
       </div>
     `,
   });
-
-  console.log("✅ Resend response:", result);
 };
 
 module.exports = sendPinEmail;
