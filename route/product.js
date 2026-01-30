@@ -1,170 +1,139 @@
 const express = require('express')
-const route = express.Router();
+const route = express.Router()
 const joi = require('joi')
 const prodet = require('../modul/prodet')
-const upload = require("../route/upload");
-const path = require('path')
-const fs = require("fs");
+const upload = require("../route/upload")
+const axios = require("axios")
+const FormData = require("form-data")
 
+// ImageBB
+const IMGBB_KEY = "db8f21522ae2d9f129a78346da6429da"
+const IMGBB_URL = "https://api.imgbb.com/1/upload"
 
-
-
-
-//get
+// ===================== GET ALL =====================
 route.get('/', async (req, res) => {
-    try {
-        const prodecat = await prodet.find();
-         
- res.status(200).json(prodecat)
-
-    } catch (error) {
-        res.status(404).json({masseg:' is not found '})
-    }
+  try {
+    const prodecat = await prodet.find()
+    res.status(200).json(prodecat)
+  } catch (error) {
+    res.status(404).json({ masseg: ' is not found ' })
+  }
 })
 
-
-
-
-
-//post
-route.post('/',upload.single("image"), async (req, res) => {
-
+// ===================== POST =====================
+route.post('/', upload.single("image"), async (req, res) => {
+  try {
     const { error } = Valdition(req.body)
     if (error) {
-        return res.status(200).json({
-            message: error.details[0].message
-        })
+      return res.status(200).json({
+        message: error.details[0].message
+      })
     }
-    const prod = new prodet({
-        title: req.body.title,
-        
-      image: `/uploads/${req.file.filename}`, // نخزن الرابط فقط
-        
+
+    if (!req.file) {
+      return res.status(400).json({ message: "image required" })
+    }
+
+    // رفع الصورة إلى ImageBB (الصيغة الصحيحة)
+    const formData = new FormData()
+    formData.append("key", IMGBB_KEY)
+    formData.append("image", req.file.buffer.toString("base64"))
+
+    const response = await axios.post(IMGBB_URL, formData, {
+      headers: formData.getHeaders()
     })
-    await prod.save();
+
+    const imageUrl = response.data.data.url
+
+    const prod = new prodet({
+      title: req.body.title,
+      image: imageUrl
+    })
+
+    await prod.save()
     res.status(200).json(prod)
-    
+
+  } catch (err) {
+    console.error(err.response?.data || err.message)
+    res.status(500).json({ error: err.message })
+  }
 })
 
-//get:id
-
+// ===================== GET BY ID =====================
 route.get("/:id", async (req, res) => {
-  // فالديشن
- 
-
   try {
-    const product = await prodet.findByIdAndUpdate(
-      req.params.id,
-    
-    );
+    const product = await prodet.findById(req.params.id)
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: "Product not found" })
     }
 
-    res.json(product);
+    res.json(product)
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message })
   }
-});
+})
 
-
-//delete
-
+// ===================== DELETE =====================
 route.delete("/:id", async (req, res) => {
   try {
-    const product = await prodet.findById(req.params.id);
+    const product = await prodet.findById(req.params.id)
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: "Product not found" })
     }
 
-    // حذف الصورة من مجلد uploads
-    const imagePath = path.join(__dirname, "../", product.image); 
-    fs.unlink(imagePath, (err) => {
-      if (err) {
-        console.log("Error deleting image:", err);
-      }
-    });
+    // ImageBB لا يدعم الحذف المجاني
+    await product.deleteOne()
 
-    // حذف المنتج من MongoDB
-    await product.deleteOne();
-
-    res.status(200).json({ message: "Product and image deleted successfully ✅" });
+    res.status(200).json({
+      message: "Product deleted successfully (image stored on ImageBB)"
+    })
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message })
   }
-});
+})
 
-
-
-
-
-
-
-
-
-//put 
-
-
-// تحديث المنتج + الصورة
+// ===================== PUT =====================
 route.put("/:id", upload.single("image"), async (req, res) => {
   try {
-    const product = await prodet.findById(req.params.id);
+    const product = await prodet.findById(req.params.id)
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: "Product not found" })
     }
 
-    // حذف الصورة القديمة إذا تم رفع صورة جديدة
-    if (req.file && product.image) {
-      const oldImagePath = path.join(__dirname, "../", product.image);
-      fs.unlink(oldImagePath, (err) => {
-        if (err) console.log("Error deleting old image:", err);
-      });
-    }
+    product.title = req.body.title || product.title
 
-    // تحديث البيانات
-    product.title = req.body.title || product.title;
     if (req.file) {
-      product.image = `/uploads/${req.file.filename}`;
+      const formData = new FormData()
+      formData.append("key", IMGBB_KEY)
+      formData.append("image", req.file.buffer.toString("base64"))
+
+      const response = await axios.post(IMGBB_URL, formData, {
+        headers: formData.getHeaders()
+      })
+
+      product.image = response.data.data.url
     }
 
-    await product.save();
-    res.json(product);
+    await product.save()
+    res.json(product)
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err.response?.data || err.message)
+    res.status(500).json({ error: err.message })
   }
-});
+})
 
-
-
-
-
-//valdit to put
-
-function valdit(opj) {
-    const schema = joi.object({
-          title: joi.string().min(3).max(500),
-        image: joi.string(),
-    
-    })
-    return schema.validate(opj)
-}
-
-
-
-
-//Valdition to post
+// ===================== VALIDATION =====================
 function Valdition(opj) {
+  const schema = joi.object({
+    title: joi.string().min(3).max(500).required(),
+    image: joi.string()
+  })
 
-    const schema = joi.object({
-        title: joi.string().min(3).max(500).required(),
-        image: joi.string()
-    
-    })
-    
-    return schema.validate(opj);
+  return schema.validate(opj)
 }
 
 module.exports = route
