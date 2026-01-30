@@ -1,19 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const mongoose = require("mongoose");
 const Joi = require("joi");
 const Product = require("./modul/djaj");
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const axios = require("axios");
+const FormData = require("form-data");
 
 // ================= multer =================
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads"),
-  filename: (req, file, cb) =>
-    cb(null, Date.now() + path.extname(file.originalname)),
-});
+const storage = multer.memoryStorage(); // نخزن الصورة بالذاكرة فقط
 const upload = multer({ storage });
+
+// ================= ImageBB =================
+const IMGBB_KEY = "db8f21522ae2d9f129a78346da6429da";
+const IMGBB_URL = "https://api.imgbb.com/1/upload";
 
 // =================================
 // GET جميع المنتجات أو حسب الفئة
@@ -33,19 +32,37 @@ router.get("/", async (req, res) => {
 // POST إضافة منتج جديد + كمية
 // =================================
 router.post("/", upload.single("image"), async (req, res) => {
-  const { error } = validateProduct(req.body);
-  if (error) return res.status(400).json({ message: error.details[0].message });
+  try {
+    const { error } = validateProduct(req.body);
+    if (error)
+      return res.status(400).json({ message: error.details[0].message });
 
-  const product = new Product({
-    title: req.body.title,
-    price: req.body.price,
-    category: req.body.category,
-    quantityAvailable: req.body.quantityAvailable || 0, // ✅ الإضافة الوحيدة
-    image: req.file ? `/uploads/${req.file.filename}` : "",
-  });
+    let imageUrl = "";
+    if (req.file) {
+      const formData = new FormData();
+      formData.append("key", IMGBB_KEY);
+      formData.append("image", req.file.buffer.toString("base64"));
 
-  await product.save();
-  res.status(201).json(product);
+      const response = await axios.post(IMGBB_URL, formData, {
+        headers: formData.getHeaders(),
+      });
+      imageUrl = response.data.data.url;
+    }
+
+    const product = new Product({
+      title: req.body.title,
+      price: req.body.price,
+      category: req.body.category,
+      quantityAvailable: req.body.quantityAvailable || 0,
+      image: imageUrl,
+    });
+
+    await product.save();
+    res.status(201).json(product);
+  } catch (err) {
+    console.log(err.response?.data || err.message);
+    res.status(500).json({ message: "Server Error", error: err.message });
+  }
 });
 
 // =================================
@@ -69,26 +86,29 @@ router.put("/:id", upload.single("image"), async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // حذف الصورة القديمة
-    if (req.file && product.image) {
-      const oldImagePath = path.join(__dirname, "../", product.image);
-      fs.unlink(oldImagePath, (err) => { if (err) console.log(err); });
-    }
-
     product.title = req.body.title || product.title;
     product.price = req.body.price || product.price;
     product.category = req.body.category || product.category;
 
-    // ✅ تحديث الكمية إن وُجدت
     if (req.body.quantityAvailable !== undefined) {
       product.quantityAvailable = req.body.quantityAvailable;
     }
 
-    if (req.file) product.image = `/uploads/${req.file.filename}`;
+    if (req.file) {
+      const formData = new FormData();
+      formData.append("key", IMGBB_KEY);
+      formData.append("image", req.file.buffer.toString("base64"));
+
+      const response = await axios.post(IMGBB_URL, formData, {
+        headers: formData.getHeaders(),
+      });
+      product.image = response.data.data.url;
+    }
 
     await product.save();
     res.status(200).json(product);
   } catch (err) {
+    console.log(err.response?.data || err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -101,11 +121,7 @@ router.delete("/:id", async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    if (product.image) {
-      const imagePath = path.join(__dirname, "../", product.image);
-      fs.unlink(imagePath, (err) => { if (err) console.log(err); });
-    }
-
+    // الصور على ImageBB، لا يمكن حذفها من API المجاني
     await product.deleteOne();
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
@@ -114,34 +130,36 @@ router.delete("/:id", async (req, res) => {
 });
 
 // =================================
-// POST إنشاء طلب ✅ تنقيص الكمية
+// POST إنشاء طلب (تنقيص الكمية)
 // =================================
 router.post("/order/create", async (req, res) => {
   try {
-    const { items } = req.body; // array من المنتجات مع { _id, quantity }
+    const { items } = req.body;
 
     if (!items || items.length === 0) {
-      return res.status(400).json({ success: false, message: "الطلبات فارغة" });
+      return res
+        .status(400)
+        .json({ success: false, message: "الطلبات فارغة" });
     }
 
-    // التحقق من الكمية المتاحة لكل منتج
     for (const item of items) {
       const product = await Product.findById(item._id);
-      if (!product) return res.status(404).json({ success: false, message: `المنتج ${item._id} غير موجود` });
 
-      if (product.quantityAvailable === 0) {
-        return res.status(400).json({ success: false, message: `الكمية المتاحة للمنتج ${product.title} نفدت` });
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: `المنتج ${item._id} غير موجود`,
+        });
       }
 
-      if (item.quantity > product.quantityAvailable) {
+      if (product.quantityAvailable < item.quantity) {
         return res.status(400).json({
           success: false,
-          message: `الكمية المطلوبة للمنتج ${product.title} أكبر من المتاحة`,
+          message: `الكمية غير كافية للمنتج ${product.title}`,
         });
       }
     }
 
-    // خصم الكمية من كل منتج
     for (const item of items) {
       const product = await Product.findById(item._id);
       product.quantityAvailable -= item.quantity;
@@ -150,22 +168,28 @@ router.post("/order/create", async (req, res) => {
 
     res.json({ success: true, message: "تم إرسال الطلب بنجاح" });
   } catch (err) {
-    console.log(err);
     res.status(500).json({ success: false, message: "خطأ في السيرفر" });
   }
 });
 
 // =================================
-// Validation Joi + كمية
+// Validation Joi
 // =================================
 function validateProduct(obj) {
   const schema = Joi.object({
     title: Joi.string().min(3).required(),
     price: Joi.number(),
-    category: Joi.string().valid("meat", "chicken", "drinks", "Offers", "waters"),
-    quantityAvailable: Joi.number().integer().min(0), // ✅ إضافة فقط
+    category: Joi.string().valid(
+      "meat",
+      "chicken",
+      "drinks",
+      "Offers",
+      "waters"
+    ),
+    quantityAvailable: Joi.number().integer().min(0),
     image: Joi.string(),
   });
+
   return schema.validate(obj);
 }
 
