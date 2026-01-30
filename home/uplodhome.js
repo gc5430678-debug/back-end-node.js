@@ -1,5 +1,6 @@
-const multer = require('multer')
+const multer = require("multer");
 
-const uplodhome = multer({ storage })
+const storage = multer.memoryStorage();
+const uploadhome = multer({ storage });
 
-module.exports = uplodhome;
+module.exports = uploadhome;
