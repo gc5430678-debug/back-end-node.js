@@ -1,133 +1,176 @@
 const express = require('express')
-const route = express.Router()
+const route = express.Router();
 const joi = require('joi')
 const homeimage = require('../modul/homeimage')
-const uploadhome = require("../home/uplodhome")
-const axios = require("axios")
+const uploadhome = require("../home/uplodhome");
+const path = require('path')
+const fs = require("fs");
 
-// ImageBB API
-const IMGBB_KEY = "db8f21522ae2d9f129a78346da6429da"
-const IMGBB_URL = "https://api.imgbb.com/1/upload"
 
-// ===================== GET ALL =====================
+
+
+//get
 route.get('/', async (req, res) => {
-  try {
-    const prodecat = await homeimage.find()
-    res.status(200).json(prodecat)
-  } catch (error) {
-    res.status(404).json({ masseg: ' is not found ' })
-  }
+    try {
+        const prodecat = await homeimage.find();
+         
+ res.status(200).json(prodecat)
+
+    } catch (error) {
+        res.status(404).json({masseg:' is not found '})
+    }
 })
 
-// ===================== POST =====================
-route.post('/', uploadhome.single("image"), async (req, res) => {
-  try {
+
+
+
+
+//post
+route.post('/',uploadhome.single("image"), async (req, res) => {
+
     const { error } = Valdition(req.body)
     if (error) {
-      return res.status(200).json({
-        message: error.details[0].message
-      })
+        return res.status(200).json({
+            message: error.details[0].message
+        })
     }
-
-    if (!req.file) {
-      return res.status(400).json({ message: "image required" })
-    }
-
-    // رفع الصورة إلى ImageBB
-    const base64Image = req.file.buffer.toString("base64")
-
-    const response = await axios.post(IMGBB_URL, null, {
-      params: {
-        key: IMGBB_KEY,
-        image: base64Image
-      }
-    })
-
-    const imageUrl = response.data.data.url
-
     const prod = new homeimage({
-      image: imageUrl
+       
+      image: `/uplodhome/${req.file.filename}`, // نخزن الرابط فقط
+        
     })
-
-    await prod.save()
+    await prod.save();
     res.status(200).json(prod)
-
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
+    
 })
 
-// ===================== GET BY ID =====================
+//get:id
+
 route.get("/:id", async (req, res) => {
+  // فالديشن
+ 
+
   try {
-    const product = await homeimage.findById(req.params.id)
+    const product = await homeimage.findByIdAndUpdate(
+      req.params.id,
+    
+    );
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" })
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    res.json(product)
+    res.json(product);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
-// ===================== DELETE =====================
+
+//delete
+
 route.delete("/:id", async (req, res) => {
   try {
-    const product = await homeimage.findById(req.params.id)
+    const product = await homeimage.findById(req.params.id);
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" })
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    await product.deleteOne()
+    if (product.image) {
+      const imagePath = path.join(
+        __dirname,
+        "../uplodhome",
+        path.basename(product.image)
+      );
+
+      // تحقق قبل الحذف
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    await product.deleteOne();
 
     res.status(200).json({
-      message: "تم حذف المنتج (الصورة محفوظة في ImageBB)"
-    })
+      message: "تم حذف المنتج والصورة بنجاح ✅"
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
-// ===================== PUT =====================
+
+
+
+
+
+
+
+
+//put 
+
+
+// تحديث المنتج + الصورة
 route.put("/:id", uploadhome.single("image"), async (req, res) => {
   try {
-    const product = await homeimage.findById(req.params.id)
+    const product = await homeimage.findById(req.params.id);
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" })
+      return res.status(404).json({ message: "Product not found" });
     }
 
+    // حذف الصورة القديمة إذا تم رفع صورة جديدة
+    if (req.file && product.image) {
+      const oldImagePath = path.join(__dirname, "../", product.image);
+      fs.unlink(oldImagePath, (err) => {
+        if (err) console.log("Error deleting old image:", err);
+      });
+    }
+
+    // تحديث البيانات
+    product.title = req.body.title || product.title;
+    product.price = req.body.price || product.price;
     if (req.file) {
-      const base64Image = req.file.buffer.toString("base64")
-
-      const response = await axios.post(IMGBB_URL, null, {
-        params: {
-          key: IMGBB_KEY,
-          image: base64Image
-        }
-      })
-
-      product.image = response.data.data.url
+      product.image = `/uplodhome/${req.file.filename}`;
     }
 
-    await product.save()
-    res.json(product)
-
+    await product.save();
+    res.json(product);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
-// ===================== VALIDATION =====================
+
+
+
+
+//valdit to put
+
+function valdit(opj) {
+    const schema = joi.object({
+         
+        image: joi.string(),
+    
+    })
+    return schema.validate(opj)
+}
+
+
+
+
+//Valdition to post
 function Valdition(opj) {
-  const schema = joi.object({
-    image: joi.string()
-  })
-  return schema.validate(opj)
+
+    const schema = joi.object({
+      
+        image: joi.string()
+    
+    })
+    
+    return schema.validate(opj);
 }
 
 module.exports = route
