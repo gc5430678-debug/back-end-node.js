@@ -3,7 +3,11 @@ const route = express.Router()
 const joi = require('joi')
 const homeimage = require('../modul/homeimage')
 const uploadhome = require("../home/uplodhome")
+const FormData = require("form-data")
 const axios = require("axios")
+
+
+
 
 // ImageBB API
 const IMGBB_KEY = "db8f21522ae2d9f129a78346da6429da"
@@ -20,27 +24,18 @@ route.get('/', async (req, res) => {
 })
 
 // ===================== POST =====================
-route.post('/', uploadhome.single("image"), async (req, res) => {
+route.post("/", uploadhome.single("image"), async (req, res) => {
   try {
-    const { error } = Valdition(req.body)
-    if (error) {
-      return res.status(200).json({
-        message: error.details[0].message
-      })
-    }
-
     if (!req.file) {
       return res.status(400).json({ message: "image required" })
     }
 
-    // رفع الصورة إلى ImageBB
-    const base64Image = req.file.buffer.toString("base64")
+    const formData = new FormData()
+    formData.append("key", IMGBB_KEY)
+    formData.append("image", req.file.buffer.toString("base64"))
 
-    const response = await axios.post(IMGBB_URL, null, {
-      params: {
-        key: IMGBB_KEY,
-        image: base64Image
-      }
+    const response = await axios.post(IMGBB_URL, formData, {
+      headers: formData.getHeaders(),
     })
 
     const imageUrl = response.data.data.url
@@ -53,6 +48,7 @@ route.post('/', uploadhome.single("image"), async (req, res) => {
     res.status(200).json(prod)
 
   } catch (err) {
+    console.error(err.response?.data || err.message)
     res.status(500).json({ error: err.message })
   }
 })
