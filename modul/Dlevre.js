@@ -35,6 +35,14 @@ const DelverSchema = new mongoose.Schema(
 
     // حفظ العملاء كمصفوفة منفصلة
     clients: { type: [ClientSchema], default: [] },
+
+    // 🔹 الموقع الحالي للمندوب
+    location: {
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
+      mapUrl: { type: String, default: "" },
+      updatedAt: { type: Date, default: null },
+    },
   },
   {
     timestamps: true,

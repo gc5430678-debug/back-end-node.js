@@ -164,6 +164,35 @@ router.post("/delete-products", async (req, res) => {
   }
 });
 
+// ================= UPDATE LOCATION =================
+// مثال على المسار الصحيح
+router.post("/update-location", async (req, res) => {
+  try {
+    const { email, latitude, longitude } = req.body;
+
+    if (!email || latitude == null || longitude == null) {
+      return res.status(400).json({ success: false, message: "البيانات ناقصة" });
+    }
+
+    const user = await User.findOne({ email, verified: true });
+    if (!user) return res.status(404).json({ success: false, message: "المندوب غير موجود أو موثق" });
+
+    user.location = {
+      latitude,
+      longitude,
+      mapUrl: `https://www.google.com/maps?q=${latitude},${longitude}`,
+      updatedAt: new Date()
+    };
+
+    await user.save();
+
+    res.json({ success: true, message: "تم تحديث الموقع بنجاح", location: user.location });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "خطأ في تحديث الموقع" });
+  }
+});
+
 
 
 module.exports = router;
