@@ -193,6 +193,55 @@ router.post("/update-location", async (req, res) => {
   }
 });
 
+// ================= ACCEPT ORDER =================
+router.post("/accept-order", async (req, res) => {
+  try {
+    const { clientName, clientPhone, email, delverName, delverEmail, latitude, longitude } = req.body;
+
+    if (!clientName || !clientPhone || !email || !delverName || !delverEmail) {
+      return res.status(400).json({ success: false, message: "البيانات ناقصة" });
+    }
+
+    // جلب المستخدم (العميل) الذي يحتوي على الطلب
+    const user = await User.findOne({ email, verified: true });
+    if (!user) return res.status(404).json({ success: false, message: "المستخدم غير موجود أو غير موثق" });
+
+    // تحديث كل المنتجات الخاصة بهذا العميل لتصبح مقبولة بواسطة المندوب
+    user.products = user.products.map(p => {
+      if (p.clientName === clientName && p.clientPhone === clientPhone) {
+        return {
+          ...p,
+          accepted: true,
+          deliveredBy: delverName,
+          delverEmail,
+          delverLocation: latitude && longitude ? { latitude, longitude } : p.delverLocation || null,
+          acceptedAt: new Date()
+        };
+      }
+      return p;
+    });
+
+    await user.save();
+
+    // إرجاع بيانات المنتجات بعد القبول
+    const acceptedProducts = user.products.filter(
+      p => p.clientName === clientName && p.clientPhone === clientPhone
+    );
+
+    res.json({
+      success: true,
+      message: "✅ تم قبول الطلب من قبل المندوب",
+      delverName,
+      delverEmail,
+      acceptedProducts
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "خطأ في السيرفر أثناء قبول الطلب" });
+  }
+});
+
 
 
 module.exports = router;

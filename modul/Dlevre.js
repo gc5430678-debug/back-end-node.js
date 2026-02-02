@@ -12,6 +12,16 @@ const ProductSchema = new mongoose.Schema({
   clientPhone: { type: String },
   clientLocation: { type: String },
   clientArea: { type: String }, // إذا كنت تريد إضافة المنطقة
+
+  // ✅ بيانات قبول الطلب
+  accepted: { type: Boolean, default: false },        // هل تم قبول الطلب
+  deliveredBy: { type: String, default: null },       // اسم المندوب الذي قبل الطلب
+  delverEmail: { type: String, default: null },       // إيميل المندوب
+  delverLocation: {                                   // موقع المندوب عند قبول الطلب
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null }
+  },
+  acceptedAt: { type: Date, default: null }           // وقت قبول الطلب
 });
 
 // 👇 Schema لكل عميل منفصل (Clients Array)
