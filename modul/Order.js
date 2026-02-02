@@ -2,10 +2,13 @@
 const mongoose = require("mongoose");
 
 const OrderSchema = new mongoose.Schema({
-  name: String, // ✅ صححت الكلمة هنا
+  name: String,
   email: String,
   phone: String,
-  location: String,
+  location: {
+    latitude: Number,
+    longitude: Number
+  },
   items: [
     {
       productId: String,
@@ -16,10 +19,7 @@ const OrderSchema = new mongoose.Schema({
     },
   ],
   totalPrice: Number,
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+  createdAt: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model("Order", OrderSchema);
