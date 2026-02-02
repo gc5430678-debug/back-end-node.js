@@ -106,6 +106,13 @@ router.get("/all", async (req, res) => {
   }
 });
 
+// GET /api/order/delver/:orderId
+app.get("/delver/:orderId", async (req, res) => {
+  const order = await Order.findById(req.params.orderId);
+  if (!order || !order.delver) return res.json({ delver: null });
+  const delver = await User.findOne({ email: order.delver });
+  res.json({ delver });
+});
 
 
 module.exports = router;
