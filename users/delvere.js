@@ -243,27 +243,49 @@ router.post("/accept-order", async (req, res) => {
 });
 
 // ================= GET LATEST DELVER LOCATION =================
+// ================= GET LATEST DELVER LOCATION =================
 router.get("/latest-delver", async (req, res) => {
   try {
     const { clientEmail } = req.query;
-    if (!clientEmail) return res.status(400).json({ success: false, message: "البريد مطلوب" });
 
-    const user = await User.findOne({ email: clientEmail, verified: true });
-    if (!user) return res.status(404).json({ success: false, message: "العميل غير موجود" });
+    if (!clientEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "clientEmail مطلوب",
+      });
+    }
 
-    // جلب آخر منتج مقبول (يحتوي على بيانات المندوب)
-    const lastAcceptedProduct = [...user.products].reverse().find(p => p.accepted && p.delverLocation);
-    if (!lastAcceptedProduct) return res.status(404).json({ success: false, message: "لا يوجد مندوب قيد التوصيل" });
+    // نبحث عن أي مندوب لديه منتجات لهذا العميل ومقبولة
+    const delver = await User.findOne({
+      verified: true,
+      "products.accepted": true,
+      "products.clientEmail": clientEmail,
+    });
 
+    if (!delver || !delver.location) {
+      return res.status(404).json({
+        success: false,
+        message: "لم يتم العثور على موقع المندوب",
+      });
+    }
+
+    // نرجع بيانات المندوب
     res.json({
       success: true,
-      delverName: lastAcceptedProduct.deliveredBy,
-      delverEmail: lastAcceptedProduct.delverEmail,
-      delverLocation: lastAcceptedProduct.delverLocation,
+      delverName: delver.name,
+      delverEmail: delver.email,
+      delverLocation: {
+        latitude: delver.location.latitude,
+        longitude: delver.location.longitude,
+      },
+      updatedAt: delver.location.updatedAt,
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: "خطأ في السيرفر" });
+    res.status(500).json({
+      success: false,
+      message: "خطأ في السيرفر",
+    });
   }
 });
 
