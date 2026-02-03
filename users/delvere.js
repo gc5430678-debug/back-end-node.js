@@ -246,7 +246,8 @@ router.post("/accept-order", async (req, res) => {
 // ================= GET LATEST DELVER LOCATION =================
 // ================= GET DELVER BY CLIENT =================
 // ================= GET ACCEPTED ORDER DELVER =================
-router.get("/accepted-delver", async (req, res) => {
+// ================= GET ACCEPTED DELVER INFO =================
+router.get("/accepted-info", async (req, res) => {
   try {
     const { clientName, clientPhone } = req.query;
 
@@ -257,43 +258,62 @@ router.get("/accepted-delver", async (req, res) => {
       });
     }
 
-    // نبحث عن أي مندوب لديه منتج مقبول لهذا العميل
+    // البحث عن المندوب الذي لديه منتج مقبول لهذا العميل
     const delver = await User.findOne({
-      "products.clientName": clientName,
-      "products.clientPhone": clientPhone,
-      "products.accepted": true,
+      products: {
+        $elemMatch: {
+          clientName,
+          clientPhone,
+          accepted: true,
+        },
+      },
     });
 
     if (!delver) {
       return res.status(404).json({
         success: false,
-        message: "لم يتم العثور على مندوب",
+        message: "لم يتم العثور على مندوب لهذا الطلب",
       });
     }
 
-    // نأخذ آخر منتج مقبول
-    const acceptedProduct = [...delver.products]
-      .reverse()
-      .find(
-        (p) =>
-          p.clientName === clientName &&
-          p.clientPhone === clientPhone &&
-          p.accepted === true
-      );
+    // جلب المنتج المقبول
+    const acceptedProduct = delver.products.find(
+      (p) =>
+        p.clientName === clientName &&
+        p.clientPhone === clientPhone &&
+        p.accepted === true
+    );
 
-    if (!acceptedProduct || !acceptedProduct.delverLocation) {
+    if (!acceptedProduct) {
       return res.status(404).json({
         success: false,
         message: "الطلب غير مقبول بعد",
       });
     }
 
+    // ✅ الرد النهائي
     res.json({
       success: true,
-      deliveredBy: acceptedProduct.deliveredBy,
-      delverEmail: acceptedProduct.delverEmail,
-      delverLocation: acceptedProduct.delverLocation,
-      acceptedAt: acceptedProduct.acceptedAt,
+
+      // بيانات المندوب
+      delver: {
+        name: delver.name,
+        email: delver.email,
+        verified: delver.verified,
+
+        // الموقع الحالي (يتحدث كل فترة)
+        currentLocation: delver.location,
+
+        // الموقع وقت قبول الطلب
+        acceptedLocation: acceptedProduct.delverLocation,
+      },
+
+      // بيانات الطلب
+      order: {
+        clientName,
+        clientPhone,
+        acceptedAt: acceptedProduct.acceptedAt,
+      },
     });
   } catch (err) {
     console.error(err);
