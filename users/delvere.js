@@ -271,14 +271,14 @@ router.get("/latest-delver", async (req, res) => {
 
     // نرجع بيانات المندوب
     res.json({
-      success: true,
-      delverName: delver.name,
+      accepted: true,
+      deliveredBy: delver.name,
       delverEmail: delver.email,
       delverLocation: {
         latitude: delver.location.latitude,
         longitude: delver.location.longitude,
       },
-      updatedAt: delver.location.updatedAt,
+      acceptedAt: delver.location.updatedAt,
     });
   } catch (err) {
     console.error(err);
