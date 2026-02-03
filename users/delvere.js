@@ -247,7 +247,7 @@ router.post("/accept-order", async (req, res) => {
 // ================= GET DELVER BY CLIENT =================
 // ================= GET ACCEPTED ORDER DELVER =================
 // ================= GET ACCEPTED DELVER INFO =================
-router.get("/accepted-info", async (req, res) => {
+router.get("/delver-by-client", async (req, res) => {
   try {
     const { clientName, clientPhone } = req.query;
 
