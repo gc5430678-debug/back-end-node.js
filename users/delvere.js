@@ -242,6 +242,30 @@ router.post("/accept-order", async (req, res) => {
   }
 });
 
+// ================= GET LATEST DELVER LOCATION =================
+router.get("/latest-delver", async (req, res) => {
+  try {
+    const { clientEmail } = req.query;
+    if (!clientEmail) return res.status(400).json({ success: false, message: "البريد مطلوب" });
+
+    const user = await User.findOne({ email: clientEmail, verified: true });
+    if (!user) return res.status(404).json({ success: false, message: "العميل غير موجود" });
+
+    // جلب آخر منتج مقبول (يحتوي على بيانات المندوب)
+    const lastAcceptedProduct = [...user.products].reverse().find(p => p.accepted && p.delverLocation);
+    if (!lastAcceptedProduct) return res.status(404).json({ success: false, message: "لا يوجد مندوب قيد التوصيل" });
+
+    res.json({
+      success: true,
+      delverName: lastAcceptedProduct.deliveredBy,
+      delverEmail: lastAcceptedProduct.delverEmail,
+      delverLocation: lastAcceptedProduct.delverLocation,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "خطأ في السيرفر" });
+  }
+});
 
 
 module.exports = router;
