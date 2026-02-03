@@ -245,7 +245,7 @@ router.post("/accept-order", async (req, res) => {
 // ================= GET LATEST DELVER LOCATION =================
 // ================= GET LATEST DELVER LOCATION =================
 // ================= GET DELVER BY CLIENT =================
-router.get("/latest-delver", async (req, res) => {
+router.get("/delver-by-client", async (req, res) => {
   try {
     const { clientName, clientPhone } = req.query;
 
