@@ -245,7 +245,8 @@ router.post("/accept-order", async (req, res) => {
 // ================= GET LATEST DELVER LOCATION =================
 // ================= GET LATEST DELVER LOCATION =================
 // ================= GET DELVER BY CLIENT =================
-router.get("/delver-by-client", async (req, res) => {
+// ================= GET ACCEPTED ORDER DELVER =================
+router.get("/accepted-delver", async (req, res) => {
   try {
     const { clientName, clientPhone } = req.query;
 
@@ -256,34 +257,43 @@ router.get("/delver-by-client", async (req, res) => {
       });
     }
 
-    // نبحث عن مندوب لديه منتجات مقبولة لهذا العميل
+    // نبحث عن أي مندوب لديه منتج مقبول لهذا العميل
     const delver = await User.findOne({
-      verified: true,
-      products: {
-        $elemMatch: {
-          clientName,
-          clientPhone,
-          accepted: true,
-        },
-      },
+      "products.clientName": clientName,
+      "products.clientPhone": clientPhone,
+      "products.accepted": true,
     });
 
-    if (!delver || !delver.location || !delver.location.latitude) {
+    if (!delver) {
       return res.status(404).json({
         success: false,
-        message: "لم يتم العثور على مندوب أو موقعه",
+        message: "لم يتم العثور على مندوب",
+      });
+    }
+
+    // نأخذ آخر منتج مقبول
+    const acceptedProduct = [...delver.products]
+      .reverse()
+      .find(
+        (p) =>
+          p.clientName === clientName &&
+          p.clientPhone === clientPhone &&
+          p.accepted === true
+      );
+
+    if (!acceptedProduct || !acceptedProduct.delverLocation) {
+      return res.status(404).json({
+        success: false,
+        message: "الطلب غير مقبول بعد",
       });
     }
 
     res.json({
       success: true,
-      delverName: delver.name,
-      delverEmail: delver.email,
-      delverLocation: {
-        latitude: delver.location.latitude,
-        longitude: delver.location.longitude,
-      },
-      updatedAt: delver.location.updatedAt,
+      deliveredBy: acceptedProduct.deliveredBy,
+      delverEmail: acceptedProduct.delverEmail,
+      delverLocation: acceptedProduct.delverLocation,
+      acceptedAt: acceptedProduct.acceptedAt,
     });
   } catch (err) {
     console.error(err);
