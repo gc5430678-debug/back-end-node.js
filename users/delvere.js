@@ -244,41 +244,46 @@ router.post("/accept-order", async (req, res) => {
 
 // ================= GET LATEST DELVER LOCATION =================
 // ================= GET LATEST DELVER LOCATION =================
-router.get("/latest-delver", async (req, res) => {
+// ================= GET DELVER BY CLIENT =================
+router.get("/delver-by-client", async (req, res) => {
   try {
-    const { clientEmail } = req.query;
+    const { clientName, clientPhone } = req.query;
 
-    if (!clientEmail) {
+    if (!clientName || !clientPhone) {
       return res.status(400).json({
         success: false,
-        message: "clientEmail مطلوب",
+        message: "clientName و clientPhone مطلوبين",
       });
     }
 
-    // نبحث عن أي مندوب لديه منتجات لهذا العميل ومقبولة
+    // نبحث عن مندوب لديه منتجات مقبولة لهذا العميل
     const delver = await User.findOne({
       verified: true,
-      "products.accepted": true,
-      "products.clientEmail": clientEmail,
+      products: {
+        $elemMatch: {
+          clientName,
+          clientPhone,
+          accepted: true,
+        },
+      },
     });
 
-    if (!delver || !delver.location) {
+    if (!delver || !delver.location || !delver.location.latitude) {
       return res.status(404).json({
         success: false,
-        message: "لم يتم العثور على موقع المندوب",
+        message: "لم يتم العثور على مندوب أو موقعه",
       });
     }
 
-    // نرجع بيانات المندوب
     res.json({
-      accepted: true,
-      deliveredBy: delver.name,
+      success: true,
+      delverName: delver.name,
       delverEmail: delver.email,
       delverLocation: {
         latitude: delver.location.latitude,
         longitude: delver.location.longitude,
       },
-      acceptedAt: delver.location.updatedAt,
+      updatedAt: delver.location.updatedAt,
     });
   } catch (err) {
     console.error(err);
@@ -288,6 +293,7 @@ router.get("/latest-delver", async (req, res) => {
     });
   }
 });
+
 
 
 module.exports = router;
