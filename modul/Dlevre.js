@@ -11,20 +11,20 @@ const ProductSchema = new mongoose.Schema({
   clientName: { type: String },
   clientPhone: { type: String },
   clientLocation: { type: String },
-  clientArea: { type: String }, // إذا كنت تريد إضافة المنطقة
+  clientArea: { type: String },
 
-  // ✅ بيانات قبول الطلب
-  accepted: { type: Boolean, default: false },        // هل تم قبول الطلب
-  deliveredBy: { type: String, default: null },       // اسم المندوب الذي قبل الطلب
-  delverEmail: { type: String, default: null },       // إيميل المندوب
-  delverLocation: {                                   // موقع المندوب عند قبول الطلب
+  // بيانات قبول الطلب
+  accepted: { type: Boolean, default: false },
+  deliveredBy: { type: String, default: null },
+  delverEmail: { type: String, default: null },
+  delverLocation: {
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null }
   },
-  acceptedAt: { type: Date, default: null }           // وقت قبول الطلب
+  acceptedAt: { type: Date, default: null }
 });
 
-// 👇 Schema لكل عميل منفصل (Clients Array)
+// 👇 Schema العملاء
 const ClientSchema = new mongoose.Schema({
   clientName: { type: String },
   clientPhone: { type: String },
@@ -35,18 +35,24 @@ const ClientSchema = new mongoose.Schema({
 const DelverSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
+
+    // ✅ رقم هاتف المندوب
+    phone: {
+      type: String,
+      required: true,
+      unique: true
+    },
+
     email: { type: String, required: true, unique: true },
     verified: { type: Boolean, default: false },
+
+    // كود التحقق
     pin: { type: String },
     pinExpires: { type: Date },
 
-    // حفظ كل المنتجات المرسلة لكل مندوب
     products: { type: [ProductSchema], default: [] },
-
-    // حفظ العملاء كمصفوفة منفصلة
     clients: { type: [ClientSchema], default: [] },
 
-    // 🔹 الموقع الحالي للمندوب
     location: {
       latitude: { type: Number, default: null },
       longitude: { type: Number, default: null },

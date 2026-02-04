@@ -13,7 +13,7 @@ router.get("/all", async (req, res) => {
   try {
     const users = await User.find(
       {},
-      { name: 1, email: 1, verified: 1, products: 1 } // ✅ أضفنا products هنا
+      { name: 1, email: 1, phone: 1, verified: 1, products: 1 }
     ).sort({ createdAt: -1 });
 
     res.json({ success: true, users });
@@ -24,10 +24,14 @@ router.get("/all", async (req, res) => {
 });
 
 // ================= REGISTER =================
+// ================= REGISTER =================
 router.post("/re", async (req, res) => {
   try {
-    const { name, email } = req.body;
-    if (!name || !email)
+    // ⬅️ أضف phone
+    const { name, email, phone } = req.body;
+
+    // ⬅️ تحقق من الهاتف
+    if (!name || !email || !phone)
       return res.json({ success: false, message: "البيانات ناقصة" });
 
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
@@ -35,17 +39,23 @@ router.post("/re", async (req, res) => {
 
     await sendPinEmail(email, pin);
 
-    let user = await User.findOne({ email });
+    // ⬅️ منع تكرار الإيميل أو الهاتف
+    let user = await User.findOne({
+      $or: [{ email }, { phone }]
+    });
+
     if (user) {
       user.pin = pin;
       user.pinExpires = pinExpires;
       user.verified = false;
     } else {
-      user = new User({ name, email, pin, pinExpires });
+      // ⬅️ حفظ الهاتف
+      user = new User({ name, email, phone, pin, pinExpires });
     }
 
     await user.save();
     res.json({ success: true, message: "تم إرسال رمز التحقق" });
+
   } catch (err) {
     console.log(err);
     res.json({ success: false, message: "فشل إرسال الإيميل" });
@@ -299,6 +309,7 @@ router.get("/accepted-info", async (req, res) => {
       delver: {
         name: delver.name,
         email: delver.email,
+        phone: delver.phone, // ✅ تمت الإضافة    
         verified: delver.verified,
 
         // الموقع الحالي (يتحدث كل فترة)
