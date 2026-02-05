@@ -27,38 +27,45 @@ router.get("/all", async (req, res) => {
 // ================= REGISTER =================
 router.post("/re", async (req, res) => {
   try {
-    // ⬅️ أضف phone
     const { name, email, phone } = req.body;
 
-    // ⬅️ تحقق من الهاتف
-    if (!name || !email || !phone)
-      return res.json({ success: false, message: "البيانات ناقصة" });
+    if (!name || !email || !phone) {
+      return res.status(400).json({ success: false, message: "البيانات ناقصة" });
+    }
+
+    // ❌ امنع التسجيل إذا الإيميل أو الهاتف موجود
+    const exists = await User.findOne({
+      $or: [{ email }, { phone }]
+    });
+
+    if (exists) {
+      return res.status(409).json({
+        success: false,
+        message: "الإيميل أو الهاتف مسجل مسبقًا"
+      });
+    }
 
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const pinExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     await sendPinEmail(email, pin);
 
-    // ⬅️ منع تكرار الإيميل أو الهاتف
-    let user = await User.findOne({
-      $or: [{ email }, { phone }]
+    const user = new User({
+      name,
+      email,
+      phone,
+      pin,
+      pinExpires,
+      verified: false
     });
 
-    if (user) {
-      user.pin = pin;
-      user.pinExpires = pinExpires;
-      user.verified = false;
-    } else {
-      // ⬅️ حفظ الهاتف
-      user = new User({ name, email, phone, pin, pinExpires });
-    }
-
     await user.save();
-    res.json({ success: true, message: "تم إرسال رمز التحقق" });
+
+    res.json({ success: true, message: "تم إنشاء الحساب وإرسال رمز التحقق" });
 
   } catch (err) {
-    console.log(err);
-    res.json({ success: false, message: "فشل إرسال الإيميل" });
+    console.error(err);
+    res.status(500).json({ success: false, message: "خطأ في السيرفر" });
   }
 });
 
