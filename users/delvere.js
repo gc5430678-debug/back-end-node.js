@@ -103,32 +103,64 @@ router.post("/log", async (req, res) => {
 /// ================= SEND PRODUCTS TO USER =================
 router.post("/send-products", async (req, res) => {
   try {
-    const { email, products, clientName, clientPhone, clientLocation } = req.body;
+    const {
+      delverEmail, // ⭐ الإيميل المختار من القائمة
+      email,       // (نتركه كما هو بدون حذف)
+      products,
+      clientName,
+      clientPhone,
+      clientLocation
+    } = req.body;
 
-    if (!email || !products || !Array.isArray(products))
-      return res.status(400).json({ success: false, message: "البيانات ناقصة" });
+    // ✅ تحقق من البيانات (كما هي)
+    if (!delverEmail || !products || !Array.isArray(products)) {
+      return res.status(400).json({
+        success: false,
+        message: "البيانات ناقصة"
+      });
+    }
 
-    const user = await User.findOne({ email, verified: true });
-    if (!user) return res.status(404).json({ success: false, message: "المندوب غير موثق" });
+    // ✅ البحث فقط بالإيميل الذي تم اختياره
+    const user = await User.findOne({
+      email: delverEmail,
+      verified: true
+    });
 
-    // إضافة بيانات العميل لكل منتج
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "المندوب غير موثق"
+      });
+    }
+
+    // ✅ إضافة بيانات العميل + ربط بالمندوب
     const productsWithClient = products.map(p => ({
       ...p,
       clientName,
       clientPhone,
       clientLocation,
+      delverEmail // ⭐ ربط الطلب بالمندوب المختار
     }));
 
-    // إضافة المنتجات للمندوب
+    // ✅ إضافة الطلبات لهذا المندوب فقط
     user.products = [...user.products, ...productsWithClient];
     await user.save();
 
-    res.json({ success: true, message: "تم إضافة المنتجات للمندوب مع بيانات العميل", products: user.products });
+    res.json({
+      success: true,
+      message: "تم إضافة المنتجات للمندوب المحدد فقط",
+      products: user.products
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: "خطأ في السيرفر" });
+    res.status(500).json({
+      success: false,
+      message: "خطأ في السيرفر"
+    });
   }
 });
+
 // ================= DELETE PRODUCTS =================
 router.post("/delete-products", async (req, res) => {
   try {

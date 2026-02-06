@@ -6,6 +6,11 @@ const ProductSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   price: { type: Number, required: true },
   image: { type: String },
+  
+delverEmail: {
+  type: String,
+  required: true
+},
 
   // بيانات العميل لكل منتج
   clientName: { type: String },
@@ -30,6 +35,8 @@ const ClientSchema = new mongoose.Schema({
   clientPhone: { type: String },
   clientLocation: { type: String },
 });
+
+
 
 // 👇 Schema المندوب
 const DelverSchema = new mongoose.Schema(
