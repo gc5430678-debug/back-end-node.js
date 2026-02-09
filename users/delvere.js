@@ -112,6 +112,7 @@ router.post("/send-products", async (req, res) => {
       clientLocation
     } = req.body;
 
+    // ✅ تحقق من البيانات (كما هو)
     if (!delverEmail || !products || !Array.isArray(products)) {
       return res.status(400).json({
         success: false,
@@ -119,6 +120,7 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
+    // ✅ البحث عن المندوب
     const user = await User.findOne({
       email: delverEmail,
       verified: true
@@ -131,7 +133,9 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
-    // ✅ جلب موقع العميل المسجّل إذا لم يُرسل
+    // ✅ جلب موقع العميل:
+    // 1) إذا جاء من الفرونت نستخدمه
+    // 2) إذا لم يأتِ، نأخذه من العملاء المسجّلين
     let savedClientLocation = clientLocation;
 
     if (!savedClientLocation) {
@@ -144,15 +148,16 @@ router.post("/send-products", async (req, res) => {
       savedClientLocation = savedClient?.clientLocation || "";
     }
 
-    // ✅ إضافة بيانات العميل
+    // ✅ إضافة المنتجات مع موقع العميل
     const productsWithClient = products.map(p => ({
       ...p,
       clientName,
       clientPhone,
-      clientLocation: savedClientLocation, // ✅ الآن مضمون
+      clientLocation: savedClientLocation, // ✅ لن يكون فارغ إلا إذا فعلاً غير موجود
       delverEmail
     }));
 
+    // ✅ حفظ المنتجات
     user.products = [...user.products, ...productsWithClient];
     await user.save();
 
