@@ -104,23 +104,30 @@ router.post("/log", async (req, res) => {
 router.post("/send-products", async (req, res) => {
   try {
     const {
-      delverEmail, // ⭐ الإيميل المختار من القائمة
-      email,       // (نتركه كما هو بدون حذف)
+      delverEmail,
+      email,
       products,
       clientName,
       clientPhone,
       clientLocation
     } = req.body;
 
-    // ✅ تحقق من البيانات (كما هي)
-    if (!delverEmail || !products || !Array.isArray(products)) {
+    // ✅ تحقق كامل
+    if (
+      !delverEmail ||
+      !products ||
+      !Array.isArray(products) ||
+      !clientName ||
+      !clientPhone ||
+      !clientLocation ||
+      clientLocation.trim() === ""
+    ) {
       return res.status(400).json({
         success: false,
-        message: "البيانات ناقصة"
+        message: "البيانات ناقصة (موقع العميل مطلوب)"
       });
     }
 
-    // ✅ البحث فقط بالإيميل الذي تم اختياره
     const user = await User.findOne({
       email: delverEmail,
       verified: true
@@ -133,22 +140,21 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
-    // ✅ إضافة بيانات العميل + ربط بالمندوب
+    // ✅ إضافة المنتجات مع موقع العميل الصحيح
     const productsWithClient = products.map(p => ({
       ...p,
       clientName,
       clientPhone,
-  clientLocation: clientLocation || "",
-      delverEmail // ⭐ ربط الطلب بالمندوب المختار
+      clientLocation: clientLocation.trim(), // ✅ مضمون
+      delverEmail
     }));
 
-    // ✅ إضافة الطلبات لهذا المندوب فقط
-    user.products = [...user.products, ...productsWithClient];
+    user.products.push(...productsWithClient);
     await user.save();
 
     res.json({
       success: true,
-      message: "تم إضافة المنتجات للمندوب المحدد فقط",
+      message: "تم إضافة المنتجات بنجاح مع موقع العميل",
       products: user.products
     });
 
@@ -160,6 +166,7 @@ router.post("/send-products", async (req, res) => {
     });
   }
 });
+
 
 // ================= DELETE PRODUCTS =================
 router.post("/delete-products", async (req, res) => {
