@@ -138,7 +138,7 @@ router.post("/send-products", async (req, res) => {
       ...p,
       clientName,
       clientPhone,
-  clientLocation,  // ✅ أضف هذا السطر
+      clientLocation,  // ✅ أضف هذا السطر
       delverEmail // ⭐ ربط الطلب بالمندوب المختار
     }));
 
