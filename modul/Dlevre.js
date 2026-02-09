@@ -6,30 +6,26 @@ const ProductSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   price: { type: Number, required: true },
   image: { type: String },
+  
+delverEmail: {
+  type: String,
+  required: true
+},
 
-  // 📦 ربط المنتج بالمندوب
-  delverEmail: {
-    type: String,
-    required: true
-  },
+  // بيانات العميل لكل منتج
+  clientName: { type: String },
+  clientPhone: { type: String },
+  clientLocation: { type: String },
+  clientArea: { type: String },
 
-  // 👤 بيانات العميل
-  clientName: { type: String, default: "" },
-  clientPhone: { type: String, default: "" },
-
-  // ✅ هذا الحقل سيُحفظ الآن بدون مشاكل
-  clientLocation: { type: String, default: "" },
-  clientArea: { type: String, default: "" },
-
-  // 🚚 حالة الطلب
+  // بيانات قبول الطلب
   accepted: { type: Boolean, default: false },
   deliveredBy: { type: String, default: null },
-
+  delverEmail: { type: String, default: null },
   delverLocation: {
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null }
   },
-
   acceptedAt: { type: Date, default: null }
 });
 
