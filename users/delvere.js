@@ -104,14 +104,15 @@ router.post("/log", async (req, res) => {
 router.post("/send-products", async (req, res) => {
   try {
     const {
-      delverEmail,
-      email,
+      delverEmail, // ⭐ الإيميل المختار من القائمة
+      email,       // (نتركه كما هو بدون حذف)
       products,
       clientName,
       clientPhone,
       clientLocation
     } = req.body;
 
+    // ✅ تحقق من البيانات (كما هي)
     if (!delverEmail || !products || !Array.isArray(products)) {
       return res.status(400).json({
         success: false,
@@ -119,6 +120,7 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
+    // ✅ البحث فقط بالإيميل الذي تم اختياره
     const user = await User.findOne({
       email: delverEmail,
       verified: true
@@ -131,34 +133,22 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
-    // ✅ جلب موقع العميل المسجّل إذا لم يُرسل
-    let savedClientLocation = clientLocation;
-
-    if (!savedClientLocation) {
-      const savedClient = user.clients.find(
-        c =>
-          c.clientName === clientName &&
-          c.clientPhone === clientPhone
-      );
-
-      savedClientLocation = savedClient?.clientLocation || "";
-    }
-
-    // ✅ إضافة بيانات العميل
+    // ✅ إضافة بيانات العميل + ربط بالمندوب
     const productsWithClient = products.map(p => ({
       ...p,
       clientName,
       clientPhone,
-      clientLocation: savedClientLocation, // ✅ الآن مضمون
-      delverEmail
+  clientLocation: clientLocation || "",
+      delverEmail // ⭐ ربط الطلب بالمندوب المختار
     }));
 
+    // ✅ إضافة الطلبات لهذا المندوب فقط
     user.products = [...user.products, ...productsWithClient];
     await user.save();
 
     res.json({
       success: true,
-      message: "تم إضافة المنتجات مع موقع العميل",
+      message: "تم إضافة المنتجات للمندوب المحدد فقط",
       products: user.products
     });
 
