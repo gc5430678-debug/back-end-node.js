@@ -100,18 +100,19 @@ router.post("/log", async (req, res) => {
   }
 });
 
+/// ================= SEND PRODUCTS TO USER =================
 router.post("/send-products", async (req, res) => {
   try {
     const {
-      delverEmail, // الإيميل المختار من القائمة
-      email,       // نتركه كما هو
+      delverEmail, // ⭐ الإيميل المختار من القائمة
+      email,       // (نتركه كما هو بدون حذف)
       products,
       clientName,
       clientPhone,
       clientLocation
     } = req.body;
 
-    // تحقق من البيانات
+    // ✅ تحقق من البيانات (كما هي)
     if (!delverEmail || !products || !Array.isArray(products)) {
       return res.status(400).json({
         success: false,
@@ -119,7 +120,7 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
-    // البحث عن المندوب
+    // ✅ البحث فقط بالإيميل الذي تم اختياره
     const user = await User.findOne({
       email: delverEmail,
       verified: true
@@ -132,47 +133,22 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
-    // ===============================
-    // جلب موقع العميل المسجل إذا لم يرسل في الطلب
-    // ===============================
-    let savedClientLocation = clientLocation;
-
-    if (!savedClientLocation) {
-      // البحث في clients المخزنين مسبقًا
-      const savedClient = user.clients.find(
-        c => c.clientPhone === clientPhone
-      );
-
-      savedClientLocation = savedClient?.clientLocation || "";
-    }
-
-    // إضافة بيانات العميل مع الموقع
+    // ✅ إضافة بيانات العميل + ربط بالمندوب
     const productsWithClient = products.map(p => ({
       ...p,
       clientName,
       clientPhone,
-      clientLocation: savedClientLocation, // الموقع مضمون الآن
-      delverEmail
+      clientLocation,  // ✅ أضف هذا السطر
+      delverEmail // ⭐ ربط الطلب بالمندوب المختار
     }));
 
-    // حفظ المنتجات للمندوب
+    // ✅ إضافة الطلبات لهذا المندوب فقط
     user.products = [...user.products, ...productsWithClient];
-
-    // ✅ تحديث clients إذا لم يكن موجود مسبقًا
-    const clientExists = user.clients.some(c => c.clientPhone === clientPhone);
-    if (!clientExists) {
-      user.clients.push({
-        clientName,
-        clientPhone,
-        clientLocation: savedClientLocation
-      });
-    }
-
     await user.save();
 
     res.json({
       success: true,
-      message: "تم إضافة المنتجات مع موقع العميل",
+      message: "تم إضافة المنتجات للمندوب المحدد فقط",
       products: user.products
     });
 
@@ -184,7 +160,6 @@ router.post("/send-products", async (req, res) => {
     });
   }
 });
-
 
 // ================= DELETE PRODUCTS =================
 router.post("/delete-products", async (req, res) => {
