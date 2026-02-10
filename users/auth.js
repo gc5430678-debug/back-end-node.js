@@ -15,25 +15,27 @@ router.post("/register", async (req, res) => {
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const pinExpires = new Date(Date.now() + 10 * 60 * 1000);
 
+    // تحقق إذا كان المستخدم موجودًا
     let user = await User.findOne({ email });
 
     if (user) {
+      // إذا المستخدم موجود، لا نسجل جديد بل نرسل PIN جديد للتحقق
       user.pin = pin;
       user.pinExpires = pinExpires;
       user.verified = false;
     } else {
+      // تسجيل مستخدم جديد بدون حذف الآخرين
       user = new User({ name, email, pin, pinExpires });
     }
 
-    await user.save(); // ✅ حفظ أولًا
+    await user.save(); // حفظ البيانات
 
     console.log("📧 Sending PIN to:", user.email);
     console.log("🔢 PIN:", pin);
 
-    await sendPinEmail(user.email, pin); // ✅ إرسال بعد الحفظ
+    await sendPinEmail(user.email, pin); // إرسال PIN
 
     res.json({ success: true, message: "تم إرسال رمز التحقق" });
-
   } catch (err) {
     console.log("❌ REGISTER ERROR:", err);
     res.json({ success: false, message: "فشل إرسال الإيميل" });
@@ -72,7 +74,7 @@ router.post("/logout", async (req, res) => {
 
     res.json({
       success: true,
-      message: "تم تسجيل الخروج ومسح جميع البيانات",
+      message: "تم تسجيل الخروج ومسح جميع البيانات للمستخدم المحدد",
     });
   } catch (err) {
     console.log(err);
