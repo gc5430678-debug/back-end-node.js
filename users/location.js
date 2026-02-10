@@ -76,5 +76,24 @@ router.post("/get-location", async (req, res) => {
     });
   }
 });
+// ================= جلب كل مواقع الزبائن =================
+router.get("/all-locations", async (req, res) => {
+  try {
+    const users = await User.find({ verified: true }, "name email location phone");
+    const locations = users
+      .filter(u => u.location) // فقط المستخدمين الذين لديهم موقع
+      .map(u => ({
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        location: u.location
+      }));
+    res.json({ success: true, users: locations });
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: "خطأ في السيرفر" });
+  }
+});
+
 
 module.exports = router;
