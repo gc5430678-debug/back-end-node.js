@@ -298,10 +298,9 @@ router.post("/accept-order", async (req, res) => {
 // ================= GET ACCEPTED DELVER INFO =================
 router.get("/accepted-info", async (req, res) => {
   try {
-    const { clientName, clientPhone, clientLocation } = req.query;
+    const { clientName, clientPhone, } = req.query;
 
-    if (!clientName || !clientPhone ||!clientLocation
-    ) {
+    if (!clientName || !clientPhone) {
       return res.status(400).json({
         success: false,
         message: "clientName و clientPhone مطلوبين",
@@ -314,7 +313,6 @@ router.get("/accepted-info", async (req, res) => {
         $elemMatch: {
           clientName,
           clientPhone,
-          clientLocation,
           accepted: true,
         },
       },
@@ -333,7 +331,6 @@ router.get("/accepted-info", async (req, res) => {
         p.clientName === clientName &&
         p.clientPhone === clientPhone &&
         p.accepted === true &&
-        p.clientLocation === clientLocation,
     );
 
     if (!acceptedProduct) {
@@ -365,7 +362,6 @@ router.get("/accepted-info", async (req, res) => {
       order: {
         clientName,
         clientPhone,
-        clientLocation,
         acceptedAt: acceptedProduct.acceptedAt,
       },
     });
