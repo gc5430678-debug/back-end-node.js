@@ -3,7 +3,7 @@ const User = require("../modul/User");
 
 const router = express.Router();
 
-// SAVE PHONE & LOCATION
+// ================= حفظ الهاتف والموقع =================
 router.post("/save-info", async (req, res) => {
   try {
     const { email, phone, location } = req.body;
@@ -31,6 +31,49 @@ router.post("/save-info", async (req, res) => {
   } catch (err) {
     console.log(err);
     res.json({ success: false, message: "خطأ في السيرفر" });
+  }
+});
+
+// ================= جلب موقع الزبون =================
+router.post("/get-location", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.json({
+        success: false,
+        message: "الإيميل مطلوب"
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "المستخدم غير موجود"
+      });
+    }
+
+    if (!user.location) {
+      return res.json({
+        success: false,
+        message: "لا يوجد موقع مسجل"
+      });
+    }
+
+    res.json({
+      success: true,
+      location: user.location,
+      phone: user.phone,
+      name: user.name
+    });
+  } catch (err) {
+    console.log(err);
+    res.json({
+      success: false,
+      message: "خطأ في السيرفر"
+    });
   }
 });
 
