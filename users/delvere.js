@@ -330,8 +330,7 @@ router.get("/accepted-info", async (req, res) => {
       (p) =>
         p.clientName === clientName &&
         p.clientPhone === clientPhone &&
-        p.accepted === true &&
-    );
+        p.accepted === true  );
 
     if (!acceptedProduct) {
       return res.status(404).json({
