@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../modul/Dlevre");
+const Order = require("../modul/Order");
 const sendPinEmail = require("./sendEmailDelvere");
 
 // ================= FETCH (node-fetch) =================
@@ -339,6 +340,11 @@ router.get("/accepted-info", async (req, res) => {
       });
     }
 
+    // الموقع: الحالي من update-location إن وُجد، وإلا موقع قبول الطلب (delverLocation) لظهور الخريطة فوراً
+    const hasCurrent = delver.location && typeof delver.location === 'object' &&
+      delver.location.latitude != null && delver.location.longitude != null;
+    const currentLocation = hasCurrent ? delver.location : acceptedProduct.delverLocation;
+
     // ✅ الرد النهائي
     res.json({
       success: true,
@@ -347,13 +353,9 @@ router.get("/accepted-info", async (req, res) => {
       delver: {
         name: delver.name,
         email: delver.email,
-        phone: delver.phone, // ✅ تمت الإضافة    
+        phone: delver.phone,
         verified: delver.verified,
-
-        // الموقع الحالي (يتحدث كل فترة)
-        currentLocation: delver.location,
-
-        // الموقع وقت قبول الطلب
+        currentLocation,
         acceptedLocation: acceptedProduct.delverLocation,
       },
 
@@ -373,5 +375,47 @@ router.get("/accepted-info", async (req, res) => {
   }
 });
 
+// ================= ORDER DELIVERED (تم التسليم) =================
+// يحذف منتجات هذا الطلب من المندوب ويحذف الطلب من قاعدة الطلبات لتمكين "إرسال مندوب" من جديد
+router.post("/order-delivered", async (req, res) => {
+  try {
+    const { clientName, clientPhone, delverEmail } = req.body;
+
+    if (!clientName || !clientPhone || !delverEmail) {
+      return res.status(400).json({ success: false, message: "البيانات ناقصة" });
+    }
+
+    const user = await User.findOne({ email: delverEmail, verified: true });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "المندوب غير موجود أو غير موثق" });
+    }
+
+    // إزالة منتجات هذا العميل من المندوب
+    const before = user.products.length;
+    user.products = user.products.filter(
+      (p) => !(p.clientName === clientName && p.clientPhone === clientPhone)
+    );
+    await user.save();
+
+    // حذف الطلب من مجموعة الطلبات (Order) ليعود زر "إرسال مندوب" يعمل عند طلب جديد
+    const deletedOrder = await Order.findOneAndDelete({
+      name: clientName,
+      phone: clientPhone,
+    });
+
+    res.json({
+      success: true,
+      message: "تم تسليم الطلب وحذفه. يمكن إرسال طلب جديد للمندوب.",
+      productsRemoved: before - user.products.length,
+      orderDeleted: !!deletedOrder,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "خطأ في السيرفر",
+    });
+  }
+});
 
 module.exports = router;
