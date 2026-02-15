@@ -420,6 +420,31 @@ router.post("/save-order-summary", async (req, res) => {
   }
 });
 
+// ================= تصفير حساب — حذف كل الملخصات للمندوب =================
+router.post("/clear-order-summaries", async (req, res) => {
+  try {
+    const { delverEmail } = req.body;
+
+    if (!delverEmail) {
+      return res.status(400).json({ success: false, message: "الإيميل مطلوب" });
+    }
+
+    const result = await DeliveredOrderSummary.deleteMany({ delverEmail });
+
+    res.json({
+      success: true,
+      message: "تم تصفير الحساب وحذف كل الملخصات",
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "خطأ في تصفير الحساب",
+    });
+  }
+});
+
 // ================= جلب ملخصات الطلبات المحفوظة (إجمالي الطلبات والزبائن) =================
 router.get("/order-summaries", async (req, res) => {
   try {
