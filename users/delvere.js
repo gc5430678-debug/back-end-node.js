@@ -9,6 +9,45 @@ const sendPinEmail = require("./sendEmailDelvere");
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
+// ================= جلب مندوب واحد مع طلباته فقط (المرسلة له) =================
+router.get("/by-email", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "الإيميل مطلوب" });
+    }
+
+    const delver = await User.findOne(
+      { email, verified: true },
+      { name: 1, email: 1, phone: 1, verified: 1, products: 1 }
+    );
+
+    if (!delver) {
+      return res.status(404).json({ success: false, message: "المندوب غير موجود" });
+    }
+
+    // فقط المنتجات المرسلة لهذا المندوب (delverEmail يطابق)
+    const myProducts = (delver.products || []).filter(
+      (p) => p.delverEmail === email
+    );
+
+    res.json({
+      success: true,
+      delver: {
+        _id: delver._id,
+        name: delver.name,
+        email: delver.email,
+        phone: delver.phone,
+        verified: delver.verified,
+        products: myProducts,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "خطأ في جلب بيانات المندوب" });
+  }
+});
+
 // ================= GET ALL USERS =================
 // ================= GET ALL USERS WITH PRODUCTS =================
 router.get("/all", async (req, res) => {
