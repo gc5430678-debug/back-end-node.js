@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../modul/Dlevre");
 const Order = require("../modul/Order");
+const DeliveredOrderSummary = require("../modul/DeliveredOrderSummary");
 const sendPinEmail = require("./sendEmailDelvere");
 
 // ================= FETCH (node-fetch) =================
@@ -110,7 +111,8 @@ router.post("/send-products", async (req, res) => {
       products,
       clientName,
       clientPhone,
-      clientLocation
+      clientLocation,
+      clientArea   // المنطقة / الزون
     } = req.body;
 
     // ✅ تحقق من البيانات (كما هي)
@@ -139,7 +141,8 @@ router.post("/send-products", async (req, res) => {
       ...p,
       clientName,
       clientPhone,
-      clientLocation,  // ✅ أضف هذا السطر
+      clientLocation,
+      clientArea: clientArea || p.clientArea || '',
       delverEmail // ⭐ ربط الطلب بالمندوب المختار
     }));
 
@@ -371,6 +374,72 @@ router.get("/accepted-info", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "خطأ في السيرفر",
+    });
+  }
+});
+
+// ================= حفظ معلومات الطلب (سعر، كمية، اسم، منطقة، إجمالي) =================
+router.post("/save-order-summary", async (req, res) => {
+  try {
+    const { delverEmail, delverName, clientName, clientPhone, zone, items, totalPrice } = req.body;
+
+    if (!delverEmail || !clientName || !clientPhone) {
+      return res.status(400).json({ success: false, message: "البيانات ناقصة" });
+    }
+
+    const summaryItems = (items || []).map((p) => ({
+      name: p.title || p.name || "",
+      price: Number(p.price) || 0,
+      quantity: Number(p.quantity) || 0,
+      subtotal: (Number(p.price) || 0) * (Number(p.quantity) || 0),
+    }));
+
+    const summary = new DeliveredOrderSummary({
+      delverEmail,
+      delverName: delverName || "",
+      clientName,
+      clientPhone,
+      zone: zone || "",
+      items: summaryItems,
+      totalPrice: Number(totalPrice) || 0,
+    });
+
+    await summary.save();
+
+    res.json({
+      success: true,
+      message: "تم حفظ معلومات الطلب بنجاح",
+      id: summary._id,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "خطأ في حفظ معلومات الطلب",
+    });
+  }
+});
+
+// ================= جلب ملخصات الطلبات المحفوظة (إجمالي الطلبات والزبائن) =================
+router.get("/order-summaries", async (req, res) => {
+  try {
+    const { delverEmail } = req.query;
+    const filter = delverEmail ? { delverEmail } : {};
+    const summaries = await DeliveredOrderSummary.find(filter).sort({ deliveredAt: -1 });
+
+    const grandTotal = summaries.reduce((s, o) => s + (o.totalPrice || 0), 0);
+
+    res.json({
+      success: true,
+      summaries,
+      totalOrders: summaries.length,
+      grandTotal,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "خطأ في جلب الملخصات",
     });
   }
 });
