@@ -26,9 +26,10 @@ router.get("/by-email", async (req, res) => {
       return res.status(404).json({ success: false, message: "المندوب غير موجود" });
     }
 
-    // فقط المنتجات المرسلة لهذا المندوب (delverEmail يطابق)
+    // المنتجات في وثيقة المندوب = طلباته فقط (كل مندوب له وثيقته المنفصلة)
+    // فلترة إضافية: فقط المنتجات المرسلة له (delverEmail يطابق أو غير محدد في البيانات القديمة)
     const myProducts = (delver.products || []).filter(
-      (p) => p.delverEmail === email
+      (p) => !p.delverEmail || p.delverEmail === email
     );
 
     res.json({
