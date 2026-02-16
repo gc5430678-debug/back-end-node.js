@@ -26,10 +26,9 @@ router.get("/by-email", async (req, res) => {
       return res.status(404).json({ success: false, message: "المندوب غير موجود" });
     }
 
-    // المنتجات في وثيقة المندوب = طلباته فقط (كل مندوب له وثيقته المنفصلة)
-    // فلترة إضافية: فقط المنتجات المرسلة له (delverEmail يطابق أو غير محدد في البيانات القديمة)
+    // فقط المنتجات المرسلة لهذا المندوب (delverEmail يطابق)
     const myProducts = (delver.products || []).filter(
-      (p) => !p.delverEmail || p.delverEmail === email
+      (p) => p.delverEmail === email
     );
 
     res.json({
@@ -176,14 +175,14 @@ router.post("/send-products", async (req, res) => {
       });
     }
 
-    // ✅ إضافة بيانات العميل + ربط بالمندوب
+    // ✅ إضافة بيانات العميل + ربط بالمندوب (كل طلب يظهر فقط للمندوب المرسل إليه)
     const productsWithClient = products.map(p => ({
       ...p,
       clientName,
       clientPhone,
       clientLocation,
       clientArea: clientArea || p.clientArea || '',
-      delverEmail // ⭐ ربط الطلب بالمندوب المختار
+      delverEmail: delverEmail  // ⭐ إلزامي: يربط الطلب بهذا المندوب فقط
     }));
 
     // ✅ إضافة الطلبات لهذا المندوب فقط
