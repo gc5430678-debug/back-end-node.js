@@ -1,6 +1,7 @@
 const express = require("express");
 const Order = require("../modul/Order");
-const User = require("../modul/User"); // 🔹 تم إضافة هذا
+const User = require("../modul/User");
+const Product = require("../modul/djaj");
 const { sendOrderToExpo } = require("../users/delvere");
 
 const router = express.Router();
@@ -19,25 +20,52 @@ router.post("/create", async (req, res) => {
 
     let order = await Order.findOne({ email, phone });
 
+    // تحويل الطلب للمندوبين يستخدم items بصيغة مختلفة — نتأكد من التوافق
+    const formatItem = (it) => ({
+      productId: it._id || it.productId,
+      title: it.title,
+      image: it.image,
+      price: it.price,
+      quantity: it.quantity,
+    });
+
+    const newItems = items.map(formatItem);
+
     if (order) {
       if (name) order.name = name;
 
-      items.forEach((newItem) => {
-        const existingItem = order.items.find(
-          (item) =>
-            item.productId === newItem.productId &&
-            item.image === newItem.image
-        );
-
-        if (existingItem) {
-          existingItem.quantity = newItem.quantity;
-        } else {
-          order.items.push(newItem);
+      // استعادة الكمية للمنتجات القديمة قبل التحديث
+      for (const oldItem of order.items) {
+        const pid = oldItem.productId || oldItem._id;
+        if (pid) {
+          const product = await Product.findById(pid);
+          if (product) {
+            product.quantityAvailable = (product.quantityAvailable || 0) + (oldItem.quantity || 0);
+            await product.save();
+          }
         }
-      });
+      }
 
+      order.items = newItems;
       order.totalPrice = totalPrice;
       await order.save();
+
+      // تنقيص quantityAvailable للمنتجات الجديدة
+      for (const it of newItems) {
+        const pid = it.productId || it._id;
+        if (!pid) continue;
+        const product = await Product.findById(pid);
+        if (!product) continue;
+        const qty = Number(it.quantity) || 0;
+        if (product.quantityAvailable < qty) {
+          return res.status(400).json({
+            success: false,
+            message: `الكمية غير كافية للمنتج: ${product.title}`,
+          });
+        }
+        product.quantityAvailable -= qty;
+        await product.save();
+      }
 
       return res.json({
         success: true,
@@ -45,12 +73,42 @@ router.post("/create", async (req, res) => {
       });
     }
 
+    // طلب جديد: التحقق ثم التنقيص
+    for (const it of newItems) {
+      const pid = it.productId || it._id;
+      if (!pid) continue;
+      const product = await Product.findById(pid);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: `المنتج غير موجود`,
+        });
+      }
+      const qty = Number(it.quantity) || 0;
+      if ((product.quantityAvailable || 0) < qty) {
+        return res.status(400).json({
+          success: false,
+          message: `الكمية غير كافية للمنتج: ${product.title}`,
+        });
+      }
+    }
+
+    for (const it of newItems) {
+      const pid = it.productId || it._id;
+      if (!pid) continue;
+      const product = await Product.findById(pid);
+      if (product) {
+        product.quantityAvailable -= Number(it.quantity) || 0;
+        await product.save();
+      }
+    }
+
     const newOrder = new Order({
       name,
       email,
       phone,
       location,
-      items,
+      items: newItems,
       totalPrice,
     });
 
