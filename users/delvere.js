@@ -189,6 +189,16 @@ router.post("/send-products", async (req, res) => {
     user.products = [...user.products, ...productsWithClient];
     await user.save();
 
+    // ✅ تحديث الطلب (Order) ببيانات المندوب — تبقى حتى يتم التسليم
+    await Order.findOneAndUpdate(
+      { name: clientName, phone: clientPhone },
+      {
+        delverEmail: user.email,
+        delverName: user.name,
+        delverPhone: user.phone,
+      }
+    );
+
     res.json({
       success: true,
       message: "تم إضافة المنتجات للمندوب المحدد فقط",
@@ -509,7 +519,7 @@ router.get("/order-summaries", async (req, res) => {
 });
 
 // ================= ORDER DELIVERED (تم التسليم) =================
-// يحذف منتجات هذا الطلب من المندوب ويحذف الطلب من قاعدة الطلبات لتمكين "إرسال مندوب" من جديد
+// يحذف هذا الطلب فقط — منتجات العميل من المندوب + الطلب من Order (وليس كل الطلبات)
 router.post("/order-delivered", async (req, res) => {
   try {
     const { clientName, clientPhone, delverEmail } = req.body;

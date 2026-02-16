@@ -19,6 +19,10 @@ const OrderSchema = new mongoose.Schema({
     },
   ],
   totalPrice: Number,
+  // بيانات المندوب المرسل إليه — تبقى حتى يتم التسليم
+  delverEmail: { type: String, default: null },
+  delverName: { type: String, default: null },
+  delverPhone: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 
